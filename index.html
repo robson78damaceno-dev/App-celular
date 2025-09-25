@@ -2,8 +2,33 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>App de Contas - JavaScript</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>App de Contas - Controle Financeiro</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Controle suas finanças de forma simples e eficiente. Gerencie receitas, gastos, contas prioritárias e dízimo.">
+    <meta name="keywords" content="finanças, contas, receitas, gastos, dízimo, controle financeiro, PWA">
+    <meta name="author" content="App de Contas">
+    <meta name="robots" content="index, follow">
+    
+    <!-- PWA Theme -->
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="msapplication-TileColor" content="#3b82f6">
+    <meta name="msapplication-navbutton-color" content="#3b82f6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="App Contas">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjZjU5ZTAiLz4KPC9zdmc+">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cGF0aCBkPSJNMTIgMkwxMy4wOSA4LjI2TDIwIDlMMTMuMDkgMTUuNzRMMTIgMjJMMTAuOTEgMTUuNzRMNCA5TDEwLjkxIDguMjZMMTIgMloiIGZpbGw9IiNmNTllMCIvPgo8L3N2Zz4K">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -269,6 +294,7 @@
             initializeApp();
             setupEventListeners();
             updateDisplay();
+            initializePWA();
         });
 
         function initializeApp() {
@@ -563,6 +589,206 @@
                 'outros': '📦 Outros'
             };
             return categories[category] || category;
+        }
+
+        // PWA Functions
+        function initializePWA() {
+            // Register Service Worker
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then((registration) => {
+                            console.log('SW registered: ', registration);
+                            
+                            // Check for updates
+                            registration.addEventListener('updatefound', () => {
+                                const newWorker = registration.installing;
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        showUpdateNotification();
+                                    }
+                                });
+                            });
+                        })
+                        .catch((registrationError) => {
+                            console.log('SW registration failed: ', registrationError);
+                        });
+                });
+            }
+
+            // Handle PWA install prompt
+            let deferredPrompt;
+            window.addEventListener('beforeinstallprompt', (e) => {
+                console.log('PWA install prompt triggered');
+                e.preventDefault();
+                deferredPrompt = e;
+                showInstallButton();
+            });
+
+            // Handle PWA installed
+            window.addEventListener('appinstalled', (evt) => {
+                console.log('PWA was installed');
+                hideInstallButton();
+            });
+
+            // Handle online/offline status
+            window.addEventListener('online', () => {
+                console.log('App is online');
+                showOnlineStatus();
+            });
+
+            window.addEventListener('offline', () => {
+                console.log('App is offline');
+                showOfflineStatus();
+            });
+
+            // Handle URL shortcuts
+            handleURLShortcuts();
+        }
+
+        function showInstallButton() {
+            // Create install button if it doesn't exist
+            if (!document.getElementById('install-button')) {
+                const installBtn = document.createElement('button');
+                installBtn.id = 'install-button';
+                installBtn.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg hover:bg-blue-600 transition-all z-50';
+                installBtn.innerHTML = '📱 Instalar App';
+                installBtn.onclick = installPWA;
+                document.body.appendChild(installBtn);
+            }
+        }
+
+        function hideInstallButton() {
+            const installBtn = document.getElementById('install-button');
+            if (installBtn) {
+                installBtn.remove();
+            }
+        }
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                    hideInstallButton();
+                });
+            }
+        }
+
+        function showUpdateNotification() {
+            // Create update notification
+            const updateNotification = document.createElement('div');
+            updateNotification.className = 'fixed top-4 left-4 right-4 bg-green-500 text-white p-3 rounded-lg shadow-lg z-50';
+            updateNotification.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <span>🔄 Nova versão disponível!</span>
+                    <button onclick="updateApp()" class="bg-white text-green-500 px-3 py-1 rounded text-sm font-semibold">
+                        Atualizar
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(updateNotification);
+
+            // Auto remove after 10 seconds
+            setTimeout(() => {
+                if (updateNotification.parentNode) {
+                    updateNotification.remove();
+                }
+            }, 10000);
+        }
+
+        function updateApp() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then((registration) => {
+                    if (registration && registration.waiting) {
+                        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                        window.location.reload();
+                    }
+                });
+            }
+        }
+
+        function showOnlineStatus() {
+            const status = document.getElementById('connection-status');
+            if (status) {
+                status.textContent = '🟢 Online';
+                status.className = 'fixed top-2 right-2 bg-green-500 text-white px-2 py-1 rounded text-xs z-50';
+            }
+        }
+
+        function showOfflineStatus() {
+            const status = document.getElementById('connection-status');
+            if (status) {
+                status.textContent = '🔴 Offline';
+                status.className = 'fixed top-2 right-2 bg-red-500 text-white px-2 py-1 rounded text-xs z-50';
+            }
+        }
+
+        function handleURLShortcuts() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const action = urlParams.get('action');
+            
+            if (action === 'add-income') {
+                setTransactionType('receita');
+                document.getElementById('valor').focus();
+            } else if (action === 'add-expense') {
+                setTransactionType('gasto');
+                document.getElementById('valor').focus();
+            }
+        }
+
+        // Export/Import functions for PWA
+        function exportData() {
+            const data = {
+                transactions: transactions,
+                priorityBills: priorityBills,
+                exportDate: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `app-contas-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.transactions && data.priorityBills) {
+                                transactions = data.transactions;
+                                priorityBills = data.priorityBills;
+                                localStorage.setItem('transactions', JSON.stringify(transactions));
+                                localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
+                                updateDisplay();
+                                alert('Dados importados com sucesso!');
+                            } else {
+                                alert('Arquivo inválido!');
+                            }
+                        } catch (error) {
+                            alert('Erro ao importar dados: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
         }
     </script>
 </body>
