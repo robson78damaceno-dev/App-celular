@@ -1,54 +1,21 @@
-# Ambiente virtual
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-pip-log.txt
-pip-delete-this-directory.txt
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-.git
-.mypy_cache
-.pytest_cache
-.hypothesis
-
 # Arquivos de dados
 data.json
-*.db
-*.sqlite
-*.sqlite3
+
+# Pasta venv (Python - pode ser removida)
+venv/
 
 # Arquivos temporários
 *.tmp
-*.temp
+*.log
+
+# Arquivos do sistema
 .DS_Store
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Arquivos de backup
+*.bak
+*.backup
 
-# Logs
-*.log
-
-# Configurações locais
+# Arquivos de configuração local
+config.local.php
 .env
-.env.local
-.env.*.local
-
-# Arquivos de instalação
-dist/
-build/
-*.egg-info/
