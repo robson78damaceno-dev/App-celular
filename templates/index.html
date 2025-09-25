@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Controle Financeiro">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="msapplication-TileColor" content="#16a34a">
+    <meta name="msapplication-tap-highlight" content="no">
+    <title>Controle Financeiro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.json">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary': '#16a34a',
+                        'primary-dark': '#15803d',
+                        'danger': '#dc2626',
+                        'info': '#2563eb',
+                    }
+                }
+            }
+        }
+
+        // Registrar Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js')
+                    .then(function(registration) {
+                        console.log('SW registrado com sucesso:', registration.scope);
+                    })
+                    .catch(function(registrationError) {
+                        console.log('Falha no registro do SW:', registrationError);
+                    });
+            });
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Safe area para iPhone X+ */
+        .safe-area {
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+        }
+        
+        @supports (padding-top: env(safe-area-inset-top)) {
+            .safe-area {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+            }
+        }
+
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #6182a3;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Para Firefox */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #e5e7eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen w-screen flex flex-col p-0 m-0 overflow-x-hidden safe-area">
+    <div class="w-full max-w-full min-h-screen bg-gray-100 flex flex-col">
+        <!-- Header -->
+        <div class="bg-blue-900/80 text-white p-5 text-center shadow-lg">
+            <div class="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl">
+                <img src="/static/images/bolsa-de-dinheiro.png" alt="Carteira" class="w-8 h-8 object-contain">
+            </div>
+            <h1 class="text-xl font-semibold mb-1">Controle Financeiro</h1>
+            <p class="text-sm opacity-90">Gerencie suas receitas e gastos mensais</p>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="grid grid-cols-2 gap-2 p-4 mb-3">
+            <div class="bg-white rounded-xl p-3 text-center shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-0.5 bg-primary"></div>
+                <div class="w-6 h-6 bg-green-100 text-primary rounded-md flex items-center justify-center mx-auto mb-2 text-sm">
+                    <i class="fas fa-arrow-up" ></i>
+                </div>
+                <h3 class="text-xs font-medium text-slate-500 mb-1">Receitas</h3>
+                <p class="text-sm font-bold text-slate-800">R$ {{ "{:,.2f}".format(receitas).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+            </div>
+            <div class="bg-white rounded-xl p-3 text-center shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-0.5 bg-danger"></div>
+                <div class="w-6 h-6 bg-red-100 text-danger rounded-md flex items-center justify-center mx-auto mb-2 text-sm">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <h3 class="text-xs font-medium text-slate-500 mb-1">Gastos</h3>
+                <p class="text-sm font-bold text-slate-800">R$ {{ "{:,.2f}".format(gastos).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+            </div>
+        </div>
+        
+        <!-- Cards de Saldo e Dízimo -->
+        <div class="grid grid-cols-2 gap-2 px-4 mb-3">
+            <div class="bg-white rounded-xl p-3 text-center shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-0.5 bg-info"></div>
+                <div class="w-6 h-6 bg-blue-100 text-info rounded-md flex items-center justify-center mx-auto mb-2 text-sm">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <h3 class="text-xs font-medium text-slate-500 mb-1">Saldo</h3>
+                <p class="text-sm font-bold text-slate-800">R$ {{ "{:,.2f}".format(saldo).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+            </div>
+            <div class="bg-white rounded-xl p-3 text-center shadow-sm relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-0.5 bg-yellow-500"></div>
+                <div class="w-6 h-6 bg-yellow-100 text-yellow-600 rounded-md flex items-center justify-center mx-auto mb-2 text-sm">
+                    <i class="fas fa-church"></i>
+                </div>
+                <h3 class="text-xs font-medium text-slate-500 mb-1">Dízimo (10%)</h3>
+                <p class="text-sm font-bold text-slate-800">R$ {{ "{:,.2f}".format(dizimo).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+            </div>
+        </div>
+
+        <!-- Adicionar Transação -->
+        <div class="bg-white mx-4 rounded-xl p-4 shadow-sm mb-3">
+            <h3 class="mb-3 text-slate-800 font-semibold text-base">Adicionar Transação</h3>
+            <div class="flex bg-slate-100 rounded-lg p-0.5 mb-4">
+                <button type="button" class="flex-1 py-2 border-none bg-transparent rounded-md font-medium text-slate-500 cursor-pointer transition-all duration-200 active hover:bg-green-500 hover:text-white" id="receitaBtn" onclick="selecionarTipo('receita')">
+                    <i class="fas fa-plus text-xs"></i> Receita
+                </button>
+                <button type="button" class="flex-1 py-2 border-none bg-transparent rounded-md font-medium text-slate-500 cursor-pointer transition-all duration-200 hover:bg-red-500 hover:text-white" id="gastoBtn" onclick="selecionarTipo('gasto')">
+                    <i class="fas fa-minus text-xs"></i> Gasto
+                </button>
+            </div>
+
+            <form id="transactionForm" onsubmit="adicionarTransacao(event)">
+                <input type="hidden" name="tipo" id="tipoTransacao" value="receita">
+
+                <div class="mb-3">
+                    <label for="valor" class="block text-sm font-medium text-slate-700 mb-1">Valor</label>
+                    <input type="text" id="valor" name="valor" placeholder="R$ 0,00" required class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:border-primary font-mono" inputmode="numeric">
+                </div>
+
+                <div class="mb-3">
+                    <label for="descricao" class="block text-sm font-medium text-slate-700 mb-1">Descrição</label>
+                    <input type="text" id="descricao" name="descricao" placeholder="Ex: Salário, Aluguel, Compras..." required class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:border-primary">
+                </div>
+
+                <!-- Campo de categoria (só aparece para gastos) -->
+                <div class="mb-3" id="categoriaField" style="display: none;">
+                    <label for="categoria" class="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
+                    <select id="categoria" name="categoria" class="w-full p-3 border-2 border-slate-200 rounded-lg text-sm transition-colors duration-200 focus:outline-none focus:border-primary">
+                        <option value="">Selecione uma categoria</option>
+                        <option value="alimentacao">🍽️ Alimentação</option>
+                        <option value="transporte">🚗 Transporte</option>
+                        <option value="saude">🏥 Saúde</option>
+                        <option value="educacao">📚 Educação</option>
+                        <option value="lazer">🎮 Lazer</option>
+                        <option value="vestuario">👕 Vestuário</option>
+                        <option value="casa">🏠 Casa</option>
+                        <option value="servicos">🔧 Serviços</option>
+                        <option value="outros">📦 Outros</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-primary text-white border-none p-3 rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 hover:bg-primary-dark" id="submitBtn">
+                    Adicionar Receita
+                </button>
+            </form>
+        </div>
+
+        <!-- Contas Prioritárias -->
+        <div class="bg-white mx-4 rounded-xl p-4 shadow-sm mb-3">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-semibold text-slate-800">Contas Prioritárias</h3>
+                <button type="button" onclick="mostrarFormularioConta()" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200">
+                    <i class="fas fa-plus mr-1"></i> Adicionar
+                </button>
+            </div>
+            
+            <!-- Formulário para adicionar conta prioritária (oculto por padrão) -->
+            <div id="formularioConta" class="hidden mb-3 p-3 bg-slate-50 rounded-lg">
+                <form id="contaForm" onsubmit="adicionarContaPrioritaria(event)">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <div>
+                            <label for="nomeConta" class="block text-xs font-medium text-slate-700 mb-1">Nome da Conta</label>
+                            <input type="text" id="nomeConta" name="nomeConta" placeholder="Ex: Aluguel" required class="w-full p-2 border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="valorConta" class="block text-xs font-medium text-slate-700 mb-1">Valor</label>
+                            <input type="text" id="valorConta" name="valorConta" placeholder="R$ 0,00" required class="w-full p-2 border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500 font-mono" inputmode="numeric">
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label for="dataVencimento" class="block text-xs font-medium text-slate-700 mb-1">Data de Vencimento</label>
+                        <input type="date" id="dataVencimento" name="dataVencimento" required class="w-full p-2 border border-slate-200 rounded-md text-xs focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-blue-500 text-white border-none p-2 rounded-md text-xs font-medium cursor-pointer transition-colors duration-200 hover:bg-blue-600">
+                            Salvar Conta
+                        </button>
+                        <button type="button" onclick="ocultarFormularioConta()" class="flex-1 bg-slate-400 text-white border-none p-2 rounded-md text-xs font-medium cursor-pointer transition-colors duration-200 hover:bg-slate-500">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="contasList" class="space-y-2">
+                {% if contas_prioritarias %}
+                    {% for conta in contas_prioritarias %}
+                    <div class="flex items-center p-2 rounded-lg bg-slate-50 relative {% if conta.pago %}opacity-60{% endif %}">
+                        <div class="w-6 h-6 rounded-md flex items-center justify-center mr-2 text-xs {% if conta.pago %}bg-green-100 text-green-600{% else %}bg-orange-100 text-orange-600{% endif %}">
+                            {% if conta.pago %}
+                                <i class="fas fa-check"></i>
+                            {% else %}
+                                <i class="fas fa-exclamation"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium text-slate-800 text-xs {% if conta.pago %}line-through{% endif %}">{{ conta.nome }}</div>
+                            <div class="text-xs text-slate-500">Vence: {{ conta.data_vencimento.split('-')[2] }}/{{ conta.data_vencimento.split('-')[1] }}/{{ conta.data_vencimento.split('-')[0] }}</div>
+                        </div>
+                        <div class="text-right mr-2">
+                            <div class="font-semibold text-xs {% if conta.pago %}text-green-600{% else %}text-orange-600{% endif %}">
+                                R$ {{ "{:,.2f}".format(conta.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            </div>
+                        </div>
+                        <div class="flex gap-1">
+                            {% if not conta.pago %}
+                            <button type="button" class="bg-green-500 hover:bg-green-600 text-white p-1 rounded text-xs transition-colors duration-200" onclick="marcarComoPago({{ loop.index0 }})" title="Marcar como pago">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            {% endif %}
+                            <button type="button" class="bg-red-500 hover:bg-red-600 text-white p-1 rounded text-xs transition-colors duration-200" onclick="excluirConta({{ loop.index0 }})" title="Excluir conta">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-4 text-slate-500">
+                        <i class="fas fa-calendar-alt text-2xl mb-2 opacity-50"></i>
+                        <p class="text-xs">Nenhuma conta prioritária</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Transações Recentes -->
+        <div class="bg-white mx-4 rounded-xl p-4 shadow-sm flex-1 flex flex-col mb-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-base font-semibold text-slate-800">Transações Recentes</h3>
+                <button type="button" onclick="limparReceitas()" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded-md text-xs font-medium transition-colors duration-200">
+                    <i class="fas fa-trash-alt mr-1"></i> Limpar Receitas
+                </button>
+            </div>
+            <div id="transactionsList" class="flex-1 overflow-y-auto max-h-80">
+                {% if transacoes %}
+                    {% for transacao in transacoes %}
+                    <div class="flex items-center p-3 rounded-lg mb-2 bg-slate-50 relative">
+                        <div class="w-8 h-8 rounded-md flex items-center justify-center mr-3 text-sm {% if transacao.tipo == 'receita' %}bg-green-100 text-primary{% else %}bg-red-100 text-danger{% endif %}">
+                            {% if transacao.tipo == 'receita' %}
+                                <i class="fas fa-arrow-up"></i>
+                            {% else %}
+                                <i class="fas fa-arrow-down"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-1">
+                            <div class="font-medium text-slate-800 mb-0.5 text-sm">{{ transacao.descricao }}</div>
+                            <div class="text-xs text-slate-500">{{ transacao.data }}</div>
+                            {% if transacao.categoria %}
+                            <div class="text-xs text-slate-400 mt-1">
+                                {% if transacao.categoria == 'alimentacao' %}🍽️ Alimentação
+                                {% elif transacao.categoria == 'transporte' %}🚗 Transporte
+                                {% elif transacao.categoria == 'saude' %}🏥 Saúde
+                                {% elif transacao.categoria == 'educacao' %}📚 Educação
+                                {% elif transacao.categoria == 'lazer' %}🎮 Lazer
+                                {% elif transacao.categoria == 'vestuario' %}👕 Vestuário
+                                {% elif transacao.categoria == 'casa' %}🏠 Casa
+                                {% elif transacao.categoria == 'servicos' %}🔧 Serviços
+                                {% elif transacao.categoria == 'outros' %}📦 Outros
+                                {% else %}{{ transacao.categoria }}
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="font-semibold text-xs {% if transacao.tipo == 'receita' %}text-primary{% else %}text-danger{% endif %}">
+                            {% if transacao.tipo == 'receita' %}+{% else %}-{% endif %}R$ {{ "{:,.2f}".format(transacao.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </div>
+                        <button type="button" class="bg-none border-none text-slate-400 cursor-pointer p-1 rounded transition-colors duration-200 hover:text-danger ml-2" onclick="excluirTransacao({{ loop.index0 }})">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-6 px-5 text-slate-500">
+                        <i class="fas fa-inbox text-3xl mb-3 opacity-50"></i>
+                        <p class="text-sm">Nenhuma transação ainda</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tipoAtual = 'receita';
+
+        function selecionarTipo(tipo) {
+            tipoAtual = tipo;
+            const receitaBtn = document.getElementById('receitaBtn');
+            const gastoBtn = document.getElementById('gastoBtn');
+            const submitBtn = document.getElementById('submitBtn');
+            const categoriaField = document.getElementById('categoriaField');
+
+            if (tipo === 'receita') {
+                // Botão Receita ativo (verde)
+                receitaBtn.className = 'flex-1 py-2 border-none bg-green-500 text-white rounded-md font-medium cursor-pointer transition-all duration-200 shadow-sm';
+                // Botão Gasto inativo (transparente com hover vermelho)
+                gastoBtn.className = 'flex-1 py-2 border-none bg-transparent rounded-md font-medium text-slate-500 cursor-pointer transition-all duration-200 hover:bg-red-500 hover:text-white';
+                // Botão de submit verde
+                submitBtn.textContent = 'Adicionar Receita';
+                submitBtn.className = 'w-full bg-primary text-white border-none p-3 rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 hover:bg-primary-dark';
+                // Ocultar campo de categoria
+                categoriaField.style.display = 'none';
+            } else {
+                // Botão Gasto ativo (vermelho)
+                gastoBtn.className = 'flex-1 py-2 border-none bg-red-500 text-white rounded-md font-medium cursor-pointer transition-all duration-200 shadow-sm';
+                // Botão Receita inativo (transparente com hover verde)
+                receitaBtn.className = 'flex-1 py-2 border-none bg-transparent rounded-md font-medium text-slate-500 cursor-pointer transition-all duration-200 hover:bg-green-500 hover:text-white';
+                // Botão de submit vermelho
+                submitBtn.textContent = 'Adicionar Gasto';
+                submitBtn.className = 'w-full bg-danger text-white border-none p-3 rounded-lg text-sm font-semibold cursor-pointer transition-colors duration-200 hover:bg-danger-dark';
+                // Mostrar campo de categoria
+                categoriaField.style.display = 'block';
+            }
+
+            // Atualizar formulário
+            document.getElementById('tipoTransacao').value = tipo;
+
+            // Focar no campo valor
+            document.getElementById('valor').focus();
+        }
+
+        async function adicionarTransacao(event) {
+            event.preventDefault();
+
+            // Obter valor formatado e converter para número
+            const valorInput = document.getElementById('valor');
+            const valorFormatado = valorInput.value;
+            const valorNumerico = extrairValorNumerico(valorFormatado);
+
+            // Validar se o valor é maior que zero
+            if (valorNumerico <= 0) {
+                alert('Por favor, digite um valor maior que zero.');
+                valorInput.focus();
+                return;
+            }
+
+            // Criar FormData com valor numérico
+            const formData = new FormData();
+            formData.append('valor', valorNumerico.toString());
+            formData.append('descricao', document.getElementById('descricao').value);
+            
+            // Adicionar categoria se for gasto
+            if (tipoAtual === 'gasto') {
+                const categoria = document.getElementById('categoria').value;
+                formData.append('categoria', categoria);
+            }
+
+            try {
+                const endpoint = tipoAtual === 'receita' ? '/adicionar_receita' : '/adicionar_gasto';
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + result.error);
+                }
+            } catch (error) {
+                alert('Erro ao adicionar transação: ' + error.message);
+            }
+        }
+
+        async function excluirTransacao(index) {
+            if (confirm('Tem certeza que deseja excluir esta transação?')) {
+                try {
+                    // Carregar dados atuais
+                    const response = await fetch('/get_data');
+                    const data = await response.json();
+
+                    // Remover transação
+                    data.transacoes.splice(index, 1);
+
+                    // Recalcular saldo
+                    let novoSaldo = 0;
+                    data.transacoes.forEach(transacao => {
+                        if (transacao.tipo === 'receita') {
+                            novoSaldo += parseFloat(transacao.valor);
+                        } else if (transacao.tipo === 'gasto') {
+                            novoSaldo -= parseFloat(transacao.valor);
+                        }
+                    });
+                    data.saldo = novoSaldo;
+
+                    // Salvar via requisição
+                    const saveResponse = await fetch('/atualizar_dados', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (saveResponse.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao excluir transação');
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir transação: ' + error.message);
+                }
+            }
+        }
+
+        // Máscara de moeda brasileira - igual apps de banco
+        document.getElementById('valor').addEventListener('input', function(e) {
+            let value = e.target.value;
+            
+            // Remover tudo que não é número
+            value = value.replace(/\D/g, '');
+            
+            // Se não há valor, mostrar placeholder
+            if (value === '') {
+                e.target.value = '';
+                return;
+            }
+            
+            // Converter para número inteiro (centavos)
+            let numericValue = parseInt(value);
+            
+            // Se não for um número válido, limpar
+            if (isNaN(numericValue)) {
+                e.target.value = '';
+                return;
+            }
+            
+            // Converter centavos para reais
+            let realValue = numericValue / 100;
+            
+            // Formatar como moeda brasileira
+            e.target.value = formatarMoedaBancaria(realValue);
+        });
+
+        // Função para formatar como moeda brasileira (estilo bancário)
+        function formatarMoedaBancaria(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(valor);
+        }
+
+        // Função para extrair valor numérico da string formatada
+        function extrairValorNumerico(valorFormatado) {
+            // Remove R$, espaços e pontos (separadores de milhares)
+            let valorLimpo = valorFormatado.replace(/[R$\s.]/g, '');
+            // Substitui vírgula por ponto para conversão
+            valorLimpo = valorLimpo.replace(',', '.');
+            return parseFloat(valorLimpo) || 0;
+        }
+
+        // Comportamento ao focar no campo
+        document.getElementById('valor').addEventListener('focus', function(e) {
+            let value = e.target.value;
+            
+            // Se estiver vazio, deixar vazio para digitação
+            if (value === '' || value === 'R$ 0,00') {
+                e.target.value = '';
+                return;
+            }
+            
+            // Se tem valor, extrair apenas os números para edição
+            if (value.startsWith('R$ ')) {
+                let valorNumerico = extrairValorNumerico(value);
+                // Converter para centavos para facilitar edição
+                let centavos = Math.round(valorNumerico * 100);
+                e.target.value = centavos.toString();
+            }
+        });
+
+        // Comportamento ao sair do campo
+        document.getElementById('valor').addEventListener('blur', function(e) {
+            let value = e.target.value;
+            
+            // Se estiver vazio, mostrar R$ 0,00
+            if (value === '' || value === '0') {
+                e.target.value = 'R$ 0,00';
+                return;
+            }
+            
+            // Se já estiver formatado, não alterar
+            if (value.startsWith('R$ ')) {
+                return;
+            }
+            
+            // Se tem apenas números, formatar
+            if (/^\d+$/.test(value)) {
+                let numericValue = parseInt(value);
+                if (!isNaN(numericValue)) {
+                    let realValue = numericValue / 100;
+                    e.target.value = formatarMoedaBancaria(realValue);
+                }
+            }
+        });
+
+        // Prevenir entrada de caracteres não numéricos
+        document.getElementById('valor').addEventListener('keypress', function(e) {
+            // Permitir apenas números, backspace, delete, tab, escape, enter
+            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        // Prevenir colar texto não numérico
+        document.getElementById('valor').addEventListener('paste', function(e) {
+            e.preventDefault();
+            let paste = (e.clipboardData || window.clipboardData).getData('text');
+            // Extrair apenas números do texto colado
+            let numeros = paste.replace(/\D/g, '');
+            if (numeros) {
+                let numericValue = parseInt(numeros);
+                if (!isNaN(numericValue)) {
+                    let realValue = numericValue / 100;
+                    e.target.value = formatarMoedaBancaria(realValue);
+                }
+            }
+        });
+
+        // Máscara de moeda para o campo de valor da conta prioritária
+        document.getElementById('valorConta').addEventListener('input', function(e) {
+            let value = e.target.value;
+            
+            // Remover tudo que não é número
+            value = value.replace(/\D/g, '');
+            
+            // Se não há valor, mostrar placeholder
+            if (value === '') {
+                e.target.value = '';
+                return;
+            }
+            
+            // Converter para número inteiro (centavos)
+            let numericValue = parseInt(value);
+            
+            // Se não for um número válido, limpar
+            if (isNaN(numericValue)) {
+                e.target.value = '';
+                return;
+            }
+            
+            // Converter centavos para reais
+            let realValue = numericValue / 100;
+            
+            // Formatar como moeda brasileira
+            e.target.value = formatarMoedaBancaria(realValue);
+        });
+
+        // Comportamento ao focar no campo de valor da conta
+        document.getElementById('valorConta').addEventListener('focus', function(e) {
+            let value = e.target.value;
+            
+            // Se estiver vazio, deixar vazio para digitação
+            if (value === '' || value === 'R$ 0,00') {
+                e.target.value = '';
+                return;
+            }
+            
+            // Se tem valor, extrair apenas os números para edição
+            if (value.startsWith('R$ ')) {
+                let valorNumerico = extrairValorNumerico(value);
+                // Converter para centavos para facilitar edição
+                let centavos = Math.round(valorNumerico * 100);
+                e.target.value = centavos.toString();
+            }
+        });
+
+        // Comportamento ao sair do campo de valor da conta
+        document.getElementById('valorConta').addEventListener('blur', function(e) {
+            let value = e.target.value;
+            
+            // Se estiver vazio, mostrar R$ 0,00
+            if (value === '' || value === '0') {
+                e.target.value = 'R$ 0,00';
+                return;
+            }
+            
+            // Se já estiver formatado, não alterar
+            if (value.startsWith('R$ ')) {
+                return;
+            }
+            
+            // Se tem apenas números, formatar
+            if (/^\d+$/.test(value)) {
+                let numericValue = parseInt(value);
+                if (!isNaN(numericValue)) {
+                    let realValue = numericValue / 100;
+                    e.target.value = formatarMoedaBancaria(realValue);
+                }
+            }
+        });
+
+        // Prevenir entrada de caracteres não numéricos no campo de valor da conta
+        document.getElementById('valorConta').addEventListener('keypress', function(e) {
+            // Permitir apenas números, backspace, delete, tab, escape, enter
+            if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter'].includes(e.key)) {
+                e.preventDefault();
+            }
+        });
+
+        // Prevenir colar texto não numérico no campo de valor da conta
+        document.getElementById('valorConta').addEventListener('paste', function(e) {
+            e.preventDefault();
+            let paste = (e.clipboardData || window.clipboardData).getData('text');
+            // Extrair apenas números do texto colado
+            let numeros = paste.replace(/\D/g, '');
+            if (numeros) {
+                let numericValue = parseInt(numeros);
+                if (!isNaN(numericValue)) {
+                    let realValue = numericValue / 100;
+                    e.target.value = formatarMoedaBancaria(realValue);
+                }
+            }
+        });
+
+        // Função para limpar apenas receitas
+        async function limparReceitas() {
+            if (confirm('Tem certeza que deseja excluir TODAS as receitas? Esta ação não pode ser desfeita.')) {
+                try {
+                    // Carregar dados atuais
+                    const response = await fetch('/get_data');
+                    const data = await response.json();
+
+                    // Filtrar apenas gastos (remover receitas)
+                    data.transacoes = data.transacoes.filter(transacao => transacao.tipo !== 'receita');
+
+                    // Recalcular saldo (apenas gastos)
+                    let novoSaldo = 0;
+                    data.transacoes.forEach(transacao => {
+                        if (transacao.tipo === 'gasto') {
+                            novoSaldo -= parseFloat(transacao.valor);
+                        }
+                    });
+                    data.saldo = novoSaldo;
+
+                    // Salvar via requisição
+                    const saveResponse = await fetch('/atualizar_dados', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    if (saveResponse.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao limpar receitas');
+                    }
+                } catch (error) {
+                    alert('Erro ao limpar receitas: ' + error.message);
+                }
+            }
+        }
+
+        // Funções para contas prioritárias
+        function mostrarFormularioConta() {
+            document.getElementById('formularioConta').classList.remove('hidden');
+        }
+
+        function ocultarFormularioConta() {
+            document.getElementById('formularioConta').classList.add('hidden');
+            document.getElementById('contaForm').reset();
+        }
+
+        async function adicionarContaPrioritaria(event) {
+            event.preventDefault();
+            
+            const formData = new FormData(event.target);
+            const nomeConta = formData.get('nomeConta');
+            const valorConta = extrairValorNumerico(formData.get('valorConta'));
+            const dataVencimento = formData.get('dataVencimento');
+
+            if (!nomeConta || !valorConta || !dataVencimento) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            try {
+                const response = await fetch('/adicionar_conta_prioritaria', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nome: nomeConta,
+                        valor: valorConta,
+                        data_vencimento: dataVencimento
+                    })
+                });
+
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Erro ao adicionar conta prioritária');
+                }
+            } catch (error) {
+                alert('Erro ao adicionar conta prioritária: ' + error.message);
+            }
+        }
+
+        async function marcarComoPago(index) {
+            if (confirm('Marcar esta conta como paga?')) {
+                try {
+                    const response = await fetch('/marcar_conta_paga', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ index: index })
+                    });
+
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao marcar conta como paga');
+                    }
+                } catch (error) {
+                    alert('Erro ao marcar conta como paga: ' + error.message);
+                }
+            }
+        }
+
+        async function excluirConta(index) {
+            if (confirm('Tem certeza que deseja excluir esta conta?')) {
+                try {
+                    const response = await fetch('/excluir_conta_prioritaria', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ index: index })
+                    });
+
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Erro ao excluir conta');
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir conta: ' + error.message);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
