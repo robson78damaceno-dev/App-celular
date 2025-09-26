@@ -1,61 +1,15 @@
 {
-    "name": "App de Contas - Controle Financeiro",
-    "short_name": "App Contas",
-    "description": "Controle suas finanças de forma simples e eficiente",
-    "start_url": "/",
-    "display": "standalone",
-    "orientation": "portrait",
-    "background_color": "#f8fafc",
-    "theme_color": "#3b82f6",
-    "scope": "/",
-    "lang": "pt-BR",
-    "categories": ["finance", "productivity", "utilities"],
-    "icons": [
-        {
-            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiByeD0iMjQiIGZpbGw9IiNmZmY3Y2QiLz4KPHN2ZyB4PSI0OCIgeT0iNDgiIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjZjU5ZTAiLz4KPC9zdmc+Cjwvc3ZnPgo=",
-            "sizes": "192x192",
-            "type": "image/svg+xml",
-            "purpose": "any maskable"
-        },
-        {
-            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiByeD0iNjQiIGZpbGw9IiNmZmY3Y2QiLz4KPHN2ZyB4PSIxMjgiIHk9IjEyOCIgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik0xMiAyTDEzLjA5IDguMjZMMjAgOUwxMy4wOSAxNS43NEwxMiAyMkwxMC45MSAxNS43NEw0IDlMMTAuOTEgOC4yNkwxMiAyWiIgZmlsbD0iI2Y1OWUwIi8+Cjwvc3ZnPgo8L3N2Zz4K",
-            "sizes": "512x512",
-            "type": "image/svg+xml",
-            "purpose": "any maskable"
-        }
-    ],
-    "screenshots": [
-        {
-            "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzc1IiBoZWlnaHQ9IjY2NyIgdmlld0JveD0iMCAwIDM3NSA2NjciIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzNzUiIGhlaWdodD0iNjY3IiBmaWxsPSIjZjhmYWZjIi8+CjxyZWN0IHg9IjIwIiB5PSI0MCIgd2lkdGg9IjMzNSIgaGVpZ2h0PSI1ODciIHJ4PSIxNiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+",
-            "sizes": "375x667",
-            "type": "image/svg+xml",
-            "form_factor": "narrow"
-        }
-    ],
-    "shortcuts": [
-        {
-            "name": "Adicionar Receita",
-            "short_name": "Receita",
-            "description": "Adicionar nova receita",
-            "url": "/?action=add-income",
-            "icons": [
-                {
-                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjMTBiOTgxIi8+Cjwvc3ZnPgo=",
-                    "sizes": "96x96"
-                }
-            ]
-        },
-        {
-            "name": "Adicionar Gasto",
-            "short_name": "Gasto",
-            "description": "Adicionar novo gasto",
-            "url": "/?action=add-expense",
-            "icons": [
-                {
-                    "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjZWY0NDQ0Ii8+Cjwvc3ZnPgo=",
-                    "sizes": "96x96"
-                }
-            ]
-        }
-    ]
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "name": "controle-financeiro-jeaauf7oh-robson-damacenos-projects.vercel",
+  "orientation": "any",
+  "scope": "/",
+  "short_name": "controle-financeiro-jeaauf7oh-robson-damacenos-projects.vercel",
+  "start_url": "/",
+  "theme_color": "#ffffff",
+  "description": "só quero baixar no meu celular",
+  "categories": [
+    "personalization"
+  ],
+  "prefer_related_applications": true
 }
