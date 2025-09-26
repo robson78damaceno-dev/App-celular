@@ -29,6 +29,9 @@
     <!-- Preconnect for performance -->
     <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link rel="dns-prefetch" href="https://cdn.tailwindcss.com">
+    
+    <!-- PWA Configuration -->
+    <script src="/pwa-config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -114,6 +117,11 @@
     </style>
 </head>
 <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen w-full">
+    <!-- PWA Status Bar -->
+    <div id="pwa-status-bar" class="hidden fixed top-0 left-0 right-0 bg-blue-500 text-white text-center py-1 text-xs z-50">
+        <span id="pwa-status-text">PWA carregando...</span>
+    </div>
+
     <div class="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-4xl w-full">
         <!-- Header -->
         <div class="text-center mb-6 sm:mb-8">
@@ -269,19 +277,35 @@
             </div>
         </div>
 
+        <!-- Expense Reports -->
+        <div class="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg mb-6 sm:mb-8">
+            <h2 class="text-lg sm:text-xl font-bold text-gray-800 mb-4">📊 Relatório de Gastos por Categoria</h2>
+            <div id="expense-reports" class="space-y-3">
+                <!-- Reports will be dynamically added here -->
+            </div>
+        </div>
+
         <!-- Recent Transactions -->
         <div class="bg-white rounded-lg sm:rounded-xl p-4 sm:p-6 shadow-lg">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2 sm:gap-0">
                 <h2 class="text-lg sm:text-xl font-bold text-gray-800">Transações Recentes</h2>
-                <button id="clear-income-btn" class="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-600 transition-all text-sm sm:text-base self-start sm:self-auto">
-                    Limpar Receitas
-                </button>
+                <div class="flex flex-wrap gap-2">
+                    <button id="clear-income-btn" class="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-600 transition-all text-sm sm:text-base">
+                        Limpar Receitas
+                    </button>
+                    <button id="clear-expenses-btn" class="bg-orange-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-orange-600 transition-all text-sm sm:text-base">
+                        Limpar Gastos
+                    </button>
+                </div>
             </div>
             <div id="transactions-list" class="space-y-2 sm:space-y-3">
                 <!-- Transactions will be dynamically added here -->
             </div>
         </div>
     </div>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="import-file" accept=".json" style="display: none;" onchange="handleImport(event)">
 
     <script>
         // Global variables
@@ -295,6 +319,7 @@
             setupEventListeners();
             updateDisplay();
             initializePWA();
+            showPWAStatus();
         });
 
         function initializeApp() {
@@ -318,6 +343,9 @@
 
             // Clear income button
             document.getElementById('clear-income-btn').addEventListener('click', clearIncome);
+            
+            // Clear expenses button
+            document.getElementById('clear-expenses-btn').addEventListener('click', clearExpenses);
 
             // Currency mask for transaction value
             document.getElementById('valor').addEventListener('input', applyCurrencyMask);
@@ -333,19 +361,37 @@
             const submitBtn = document.getElementById('submit-btn');
             const categoriaContainer = document.getElementById('categoria-container');
 
+            // Verificar se há receitas
+            const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0);
+            const podeGastar = receitas > 0;
+
             if (type === 'receita') {
                 receitaBtn.classList.add('bg-green-600');
                 receitaBtn.classList.remove('bg-green-500');
                 gastoBtn.classList.add('bg-red-500');
                 gastoBtn.classList.remove('bg-red-600');
                 submitBtn.textContent = 'Adicionar Receita';
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 categoriaContainer.classList.add('hidden');
             } else {
                 receitaBtn.classList.add('bg-green-500');
                 receitaBtn.classList.remove('bg-green-600');
-                gastoBtn.classList.add('bg-red-600');
-                gastoBtn.classList.remove('bg-red-500');
-                submitBtn.textContent = 'Adicionar Gasto';
+                
+                if (podeGastar) {
+                    gastoBtn.classList.add('bg-red-600');
+                    gastoBtn.classList.remove('bg-red-500');
+                    submitBtn.textContent = 'Adicionar Gasto';
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    gastoBtn.classList.add('bg-gray-400');
+                    gastoBtn.classList.remove('bg-red-500', 'bg-red-600');
+                    submitBtn.textContent = 'Adicionar Receita Primeiro';
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+                
                 categoriaContainer.classList.remove('hidden');
             }
         }
@@ -379,6 +425,24 @@
 
             // Parse currency value
             const numericValue = parseFloat(valor.replace(/[^\d,]/g, '').replace(',', '.'));
+
+            // Se for gasto, verificar se há receitas
+            if (currentTransactionType === 'gasto') {
+                const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0);
+                const gastos = transactions.filter(t => t.tipo === 'gasto').reduce((sum, t) => sum + t.valor, 0);
+                const dizimo = receitas * 0.10;
+                const saldoDisponivel = receitas - gastos - dizimo;
+                
+                if (receitas === 0) {
+                    alert('❌ Não é possível adicionar gastos sem receitas!\n\nAdicione receitas primeiro para poder fazer gastos.');
+                    return;
+                }
+                
+                if (saldoDisponivel < numericValue) {
+                    alert(`❌ Saldo insuficiente!\n\nVocê tem R$ ${formatCurrency(saldoDisponivel)} disponível, mas está tentando gastar R$ ${formatCurrency(numericValue)}.`);
+                    return;
+                }
+            }
 
             const transaction = {
                 id: Date.now(),
@@ -441,6 +505,59 @@
         function markBillAsPaid(billId) {
             const bill = priorityBills.find(b => b.id === billId);
             if (bill) {
+                // Se está marcando como paga
+                if (!bill.paga) {
+                    // Calcular receitas disponíveis
+                    const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0);
+                    const gastos = transactions.filter(t => t.tipo === 'gasto').reduce((sum, t) => sum + t.valor, 0);
+                    const dizimo = receitas * 0.10;
+                    const saldoDisponivel = receitas - gastos - dizimo;
+                    
+                    // Verificar se há saldo suficiente
+                    if (saldoDisponivel < bill.valor) {
+                        alert(`Saldo insuficiente! Você tem R$ ${formatCurrency(saldoDisponivel)} disponível, mas a conta custa R$ ${formatCurrency(bill.valor)}.`);
+                        return;
+                    }
+                    
+                    // Confirmar pagamento
+                    if (!confirm(`Confirmar pagamento de R$ ${formatCurrency(bill.valor)} para "${bill.nome}"?`)) {
+                        return;
+                    }
+                    
+                    // Adicionar gasto automático com referência à conta
+                    const gastoAutomatico = {
+                        id: Date.now(),
+                        tipo: 'gasto',
+                        valor: bill.valor,
+                        descricao: `Pagamento: ${bill.nome}`,
+                        categoria: 'servicos',
+                        data: new Date().toISOString(),
+                        billId: billId // Referência para poder remover depois
+                    };
+                    
+                    transactions.unshift(gastoAutomatico);
+                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                } else {
+                    // Se está desmarcando como paga, remover o gasto correspondente
+                    const gastoIndex = transactions.findIndex(t => 
+                        t.tipo === 'gasto' && 
+                        t.descricao === `Pagamento: ${bill.nome}` && 
+                        t.billId === billId
+                    );
+                    
+                    if (gastoIndex !== -1) {
+                        // Confirmar desmarcação
+                        if (!confirm(`Desmarcar pagamento de R$ ${formatCurrency(bill.valor)} para "${bill.nome}"? O valor voltará para o saldo.`)) {
+                            return;
+                        }
+                        
+                        // Remover o gasto
+                        transactions.splice(gastoIndex, 1);
+                        localStorage.setItem('transactions', JSON.stringify(transactions));
+                    }
+                }
+                
+                // Marcar como paga/não paga
                 bill.paga = !bill.paga;
                 localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
                 updateDisplay();
@@ -448,10 +565,28 @@
         }
 
         function deleteBill(billId) {
-            if (confirm('Tem certeza que deseja excluir esta conta?')) {
-                priorityBills = priorityBills.filter(b => b.id !== billId);
-                localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
-                updateDisplay();
+            const bill = priorityBills.find(b => b.id === billId);
+            if (bill) {
+                if (confirm('Tem certeza que deseja excluir esta conta?')) {
+                    // Se a conta está marcada como paga, remover o gasto correspondente
+                    if (bill.paga) {
+                        const gastoIndex = transactions.findIndex(t => 
+                            t.tipo === 'gasto' && 
+                            t.descricao === `Pagamento: ${bill.nome}` && 
+                            t.billId === billId
+                        );
+                        
+                        if (gastoIndex !== -1) {
+                            transactions.splice(gastoIndex, 1);
+                            localStorage.setItem('transactions', JSON.stringify(transactions));
+                        }
+                    }
+                    
+                    // Remover a conta
+                    priorityBills = priorityBills.filter(b => b.id !== billId);
+                    localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
+                    updateDisplay();
+                }
             }
         }
 
@@ -463,10 +598,20 @@
             }
         }
 
+        function clearExpenses() {
+            if (confirm('Tem certeza que deseja limpar todos os gastos?')) {
+                transactions = transactions.filter(t => t.tipo !== 'gasto');
+                localStorage.setItem('transactions', JSON.stringify(transactions));
+                updateDisplay();
+            }
+        }
+
         function updateDisplay() {
             updateSummaryCards();
             updateTransactionsList();
             updateBillsList();
+            updateExpenseReports();
+            updateTransactionButtons();
         }
 
         function updateSummaryCards() {
@@ -536,6 +681,13 @@
                 const statusText = bill.paga ? 'Paga' : 'Pendente';
                 const statusColor = bill.paga ? 'text-green-600' : 'text-yellow-600';
                 
+                // Verificar se pode pagar (saldo suficiente)
+                const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0);
+                const gastos = transactions.filter(t => t.tipo === 'gasto').reduce((sum, t) => sum + t.valor, 0);
+                const dizimo = receitas * 0.10;
+                const saldoDisponivel = receitas - gastos - dizimo;
+                const podePagar = saldoDisponivel >= bill.valor;
+                
                 div.innerHTML = `
                     <div class="flex items-center space-x-2 sm:space-x-3 min-w-0 flex-1">
                         <div class="w-6 h-6 sm:w-8 sm:h-8 bg-white rounded-full flex items-center justify-center flex-shrink-0">
@@ -545,13 +697,16 @@
                             <p class="font-medium text-gray-800 text-sm sm:text-base truncate">${bill.nome}</p>
                             <p class="text-xs sm:text-sm text-gray-500">Vence: ${formatDate(bill.data_vencimento)}</p>
                             <p class="text-xs ${statusColor}">${statusText}</p>
+                            ${!bill.paga && !podePagar ? '<p class="text-xs text-red-500">💰 Saldo insuficiente</p>' : ''}
                         </div>
                     </div>
                     <div class="flex items-center justify-between sm:justify-end space-x-2 sm:space-x-2">
                         <p class="font-bold text-gray-800 text-sm sm:text-base">${formatCurrency(bill.valor)}</p>
                         <div class="flex space-x-1">
-                            <button onclick="markBillAsPaid(${bill.id})" class="px-2 sm:px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-all whitespace-nowrap">
-                                ${bill.paga ? 'Desmarcar' : 'Paga'}
+                            <button onclick="markBillAsPaid(${bill.id})" 
+                                    class="px-2 sm:px-3 py-1 text-white text-xs rounded transition-all whitespace-nowrap ${bill.paga ? 'bg-gray-500 hover:bg-gray-600' : podePagar ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-400 cursor-not-allowed'}" 
+                                    ${!bill.paga && !podePagar ? 'disabled' : ''}>
+                                ${bill.paga ? 'Desmarcar' : 'Pagar'}
                             </button>
                             <button onclick="deleteBill(${bill.id})" class="px-2 sm:px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-all">
                                 Excluir
@@ -562,6 +717,107 @@
                 
                 container.appendChild(div);
             });
+        }
+
+        function updateExpenseReports() {
+            const container = document.getElementById('expense-reports');
+            container.innerHTML = '';
+
+            // Calcular gastos por categoria
+            const gastosPorCategoria = {};
+            const gastos = transactions.filter(t => t.tipo === 'gasto');
+            
+            gastos.forEach(gasto => {
+                const categoria = gasto.categoria || 'outros';
+                if (!gastosPorCategoria[categoria]) {
+                    gastosPorCategoria[categoria] = 0;
+                }
+                gastosPorCategoria[categoria] += gasto.valor;
+            });
+
+            // Se não há gastos, mostrar mensagem
+            if (Object.keys(gastosPorCategoria).length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4">Nenhum gasto por categoria encontrado.</p>';
+                return;
+            }
+
+            // Ordenar categorias por valor (maior para menor)
+            const categoriasOrdenadas = Object.entries(gastosPorCategoria)
+                .sort(([,a], [,b]) => b - a);
+
+            // Calcular total de gastos
+            const totalGastos = categoriasOrdenadas.reduce((sum, [, valor]) => sum + valor, 0);
+
+            categoriasOrdenadas.forEach(([categoria, valor]) => {
+                const div = document.createElement('div');
+                div.className = 'bg-gray-50 rounded-lg p-3 sm:p-4';
+                
+                const percentual = totalGastos > 0 ? (valor / totalGastos) * 100 : 0;
+                const nomeCategoria = getCategoryName(categoria);
+                const corCategoria = getCategoryColor(categoria);
+                
+                div.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-lg">${nomeCategoria.split(' ')[0]}</span>
+                            <span class="text-sm text-gray-600">${nomeCategoria.split(' ').slice(1).join(' ')}</span>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold text-gray-800 text-sm sm:text-base">${formatCurrency(valor)}</p>
+                            <p class="text-xs text-gray-500">${percentual.toFixed(1)}% do total</p>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div class="h-2 rounded-full ${corCategoria}" style="width: ${percentual}%"></div>
+                    </div>
+                `;
+                
+                container.appendChild(div);
+            });
+
+            // Adicionar resumo total
+            const resumoDiv = document.createElement('div');
+            resumoDiv.className = 'bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 mt-4';
+            resumoDiv.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-lg">📊</span>
+                        <span class="font-semibold text-blue-800">Total de Gastos</span>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold text-blue-800 text-lg">${formatCurrency(totalGastos)}</p>
+                        <p class="text-xs text-blue-600">${categoriasOrdenadas.length} categorias</p>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(resumoDiv);
+        }
+
+        function updateTransactionButtons() {
+            // Verificar se há receitas
+            const receitas = transactions.filter(t => t.tipo === 'receita').reduce((sum, t) => sum + t.valor, 0);
+            const podeGastar = receitas > 0;
+            
+            const gastoBtn = document.getElementById('btn-gasto');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            // Se o tipo atual é gasto, atualizar o estado dos botões
+            if (currentTransactionType === 'gasto') {
+                if (podeGastar) {
+                    gastoBtn.classList.add('bg-red-600');
+                    gastoBtn.classList.remove('bg-gray-400');
+                    submitBtn.textContent = 'Adicionar Gasto';
+                    submitBtn.disabled = false;
+                    submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                } else {
+                    gastoBtn.classList.add('bg-gray-400');
+                    gastoBtn.classList.remove('bg-red-600');
+                    submitBtn.textContent = 'Adicionar Receita Primeiro';
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+            }
         }
 
         function formatCurrency(value) {
@@ -589,6 +845,21 @@
                 'outros': '📦 Outros'
             };
             return categories[category] || category;
+        }
+
+        function getCategoryColor(category) {
+            const colors = {
+                'alimentacao': 'bg-orange-500',
+                'transporte': 'bg-blue-500',
+                'saude': 'bg-red-500',
+                'educacao': 'bg-purple-500',
+                'lazer': 'bg-green-500',
+                'vestuario': 'bg-pink-500',
+                'casa': 'bg-yellow-500',
+                'servicos': 'bg-indigo-500',
+                'outros': 'bg-gray-500'
+            };
+            return colors[category] || 'bg-gray-500';
         }
 
         // PWA Functions
@@ -742,31 +1013,49 @@
             }
         }
 
-        // Export/Import functions for PWA
-        function exportData() {
-            const data = {
-                transactions: transactions,
-                priorityBills: priorityBills,
-                exportDate: new Date().toISOString(),
-                version: '1.0'
-            };
+        // PWA Status functions
+        function showPWAStatus() {
+            const statusBar = document.getElementById('pwa-status-bar');
+            const statusText = document.getElementById('pwa-status-text');
             
-            const dataStr = JSON.stringify(data, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `app-contas-backup-${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
+            if (window.pwaConfig) {
+                const appInfo = window.pwaConfig.getAppInfo();
+                if (appInfo.installed) {
+                    statusText.textContent = '📱 App instalado • PWA ativo';
+                    statusBar.className = 'fixed top-0 left-0 right-0 bg-green-500 text-white text-center py-1 text-xs z-50';
+                } else {
+                    statusText.textContent = '🌐 PWA disponível • Toque para instalar';
+                    statusBar.className = 'fixed top-0 left-0 right-0 bg-blue-500 text-white text-center py-1 text-xs z-50 cursor-pointer';
+                    statusBar.onclick = () => window.pwaConfig.installPWA();
+                }
+                statusBar.classList.remove('hidden');
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    statusBar.classList.add('hidden');
+                }, 5000);
+            }
         }
 
-        function importData() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
+        // Import function
+        function handleImport(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (window.pwaConfig) {
+                    window.pwaConfig.importData(file)
+                        .then((data) => {
+                            transactions = data.transactions;
+                            priorityBills = data.priorityBills;
+                            localStorage.setItem('transactions', JSON.stringify(transactions));
+                            localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
+                            updateDisplay();
+                            alert('✅ Dados importados com sucesso!');
+                        })
+                        .catch((error) => {
+                            alert('❌ Erro ao importar dados: ' + error.message);
+                        });
+                } else {
+                    // Fallback import
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
@@ -777,18 +1066,60 @@
                                 localStorage.setItem('transactions', JSON.stringify(transactions));
                                 localStorage.setItem('priorityBills', JSON.stringify(priorityBills));
                                 updateDisplay();
-                                alert('Dados importados com sucesso!');
+                                alert('✅ Dados importados com sucesso!');
                             } else {
-                                alert('Arquivo inválido!');
+                                alert('❌ Arquivo inválido!');
                             }
                         } catch (error) {
-                            alert('Erro ao importar dados: ' + error.message);
+                            alert('❌ Erro ao importar dados: ' + error.message);
                         }
                     };
                     reader.readAsText(file);
                 }
-            };
-            input.click();
+            }
+        }
+
+        // Enhanced PWA functions
+        function showInstallButton() {
+            if (window.pwaConfig) {
+                window.pwaConfig.showInstallButton();
+            }
+        }
+
+        function hideInstallButton() {
+            if (window.pwaConfig) {
+                window.pwaConfig.hideInstallButton();
+            }
+        }
+
+        function installPWA() {
+            if (window.pwaConfig) {
+                window.pwaConfig.installPWA();
+            }
+        }
+
+        function showUpdateNotification() {
+            if (window.pwaConfig) {
+                window.pwaConfig.showUpdateNotification();
+            }
+        }
+
+        function updateApp() {
+            if (window.pwaConfig) {
+                window.pwaConfig.updateApp();
+            }
+        }
+
+        function showOnlineStatus() {
+            if (window.pwaConfig) {
+                window.pwaConfig.showOnlineStatus();
+            }
+        }
+
+        function showOfflineStatus() {
+            if (window.pwaConfig) {
+                window.pwaConfig.showOfflineStatus();
+            }
         }
     </script>
 </body>
